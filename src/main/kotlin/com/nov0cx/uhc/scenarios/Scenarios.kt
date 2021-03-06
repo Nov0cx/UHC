@@ -1,13 +1,17 @@
 package com.nov0cx.uhc.scenarios
 
 import com.nov0cx.uhc.listener.listen
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.block.Chest
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Player
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import java.util.concurrent.ThreadLocalRandom
 
@@ -108,8 +112,6 @@ class Diamondless(override var enabled: Boolean = false, override val name: Stri
             val loc = it.entity.location
             if (!ScenarioManger.get().getScenario("Timebomb").enabled)
                 it.entity.world.dropItem(loc, ItemStack(Material.DIAMOND))
-            else
-                (ScenarioManger.get().getScenario("Timebomb") as Timebomb).addDiamond()
         }
 
     }
@@ -118,11 +120,30 @@ class Diamondless(override var enabled: Boolean = false, override val name: Stri
 class Timebomb(override var enabled: Boolean = false, override val name: String = "Timebomb") : Scenario {
 
     init {
+        listen<PlayerDeathEvent> {
+            val loc = it.entity.location
+            loc.clone().add(0.0, 1.0, 0.0).block.type = Material.CHEST
+            val inv = ((loc.clone().add(0.0, 1.0, 0.0).block.state) as Chest).blockInventory
+            inv.clear()
 
+            for (i in 0..inv.size) {
+                inv.setItem(i, it.entity.inventory.getItem(i))
+            }
+
+            if (!ScenarioManger.get().getScenario("Diamondless").enabled)
+                return@listen
+
+            if (isInventoryFull(inv))
+                it.entity.world.dropItem(loc, ItemStack(Material.DIAMOND))
+            else
+                inv.addItem(ItemStack(Material.DIAMOND))
+        }
     }
 
-    fun addDiamond() {
-
+    fun isInventoryFull(inv: Inventory): Boolean {
+        return inv.firstEmpty() == -1;
     }
+
+
 
 }
